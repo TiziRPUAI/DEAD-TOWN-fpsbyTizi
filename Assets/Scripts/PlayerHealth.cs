@@ -1,3 +1,4 @@
+using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -15,13 +16,26 @@ public class PlayerHealth : MonoBehaviour, IHittable
     [Header("Optional events")]
     public UnityEvent<float> onDamage; // parámetro: currentHealth
     public UnityEvent onDeath;
-
+    public GameObject bloodyScreen;
+    private BloodyScreenEffect bloodyEffect;
+    public TextMeshProUGUI playerHealthUI;
     public bool isDead { get; private set; }
 
     void Start()
     {
         currentHealth = maxHealth;
         isDead = false;
+
+        // Mantener el GameObject activo para que el componente pueda inicializarse.
+        if (bloodyScreen != null)
+        {
+            bloodyScreen.SetActive(true);
+            bloodyEffect = bloodyScreen.GetComponent<BloodyScreenEffect>();
+            if (bloodyEffect == null)
+                Debug.LogWarning($"{name}: BloodyScreenEffect no encontrado en bloodyScreen.");
+        }
+
+        UpdateHealthUI();
     }
 
     // IHittable
@@ -36,6 +50,15 @@ public class PlayerHealth : MonoBehaviour, IHittable
 
         Debug.Log($"{name} recibió {amount} de daño. HP: {currentHealth}/{maxHealth}");
         onDamage?.Invoke(currentHealth);
+
+        // Trigger overlay: usar la referencia cacheada si existe, sino buscarla al vuelo
+        if (bloodyEffect == null && bloodyScreen != null)
+            bloodyEffect = bloodyScreen.GetComponent<BloodyScreenEffect>();
+
+        if (bloodyEffect != null)
+            bloodyEffect.Trigger(amount / maxHealth);
+
+        UpdateHealthUI();
 
         if (currentHealth <= 0f)
             Die();
@@ -52,6 +75,7 @@ public class PlayerHealth : MonoBehaviour, IHittable
         if (isDead) return;
         currentHealth = Mathf.Clamp(currentHealth + amount, 0f, maxHealth);
         onDamage?.Invoke(currentHealth);
+        UpdateHealthUI();
     }
 
     private void Die()
@@ -75,6 +99,22 @@ public class PlayerHealth : MonoBehaviour, IHittable
         var weapon = GetComponentInChildren<Weapon>();
         if (weapon != null) weapon.enabled = false;
 
+        // Activar el Animator que esté en los hijos para reproducir la animación de muerte
+        var animator = GetComponentInChildren<Animator>();
+        if (animator != null) animator.enabled = true;
+
+        // Asegurar que la UI muestre 0 al morir
+        UpdateHealthUI();
+
         // Puedes añadir aquí lógica de respawn, pantalla de Game Over, etc.
+    }
+
+    // Actualiza el texto del contador de vida (muestra valores enteros)
+    private void UpdateHealthUI()
+    {
+        if (playerHealthUI == null) return;
+        int current = Mathf.RoundToInt(currentHealth);
+        int max = Mathf.RoundToInt(maxHealth);
+        playerHealthUI.text = $"Health:{current}/{max}";
     }
 }

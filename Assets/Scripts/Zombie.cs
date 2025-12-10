@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.AI;
 
 public class Zombie : MonoBehaviour, IHittable
@@ -49,11 +49,24 @@ public class Zombie : MonoBehaviour, IHittable
         if (playerGO != null)
         {
             player = playerGO.transform;
+
+            // Intentar localizar IHittable en root, hijos o padres (más robusto para distintos prefabs)
             playerHittable = playerGO.GetComponent<IHittable>();
+            if (playerHittable == null)
+                playerHittable = playerGO.GetComponentInChildren<IHittable>();
+            if (playerHittable == null)
+                playerHittable = playerGO.GetComponentInParent<IHittable>();
+
+            if (playerHittable == null)
+                Debug.LogWarning($"Zombie: no se encontró IHittable en el GameObject con tag 'Player' ({playerGO.name}). El jugador no recibirá daño.");
+        }
+        else
+        {
+            Debug.LogWarning("Zombie: no se encontró ningún GameObject con tag 'Player' en la escena.");
         }
 
-        // Asegurarse de que GameManager tenga el conteo correcto si el zombie se instancia runtime
-        GameManager.Instance?.CountEnemies();
+        // Registrar el zombie recien instanciado en el GameManager (m�s fiable que recuentos globales)
+        GameManager.Instance?.RegisterEnemy();
     }
 
     void Update()
@@ -107,7 +120,15 @@ public class Zombie : MonoBehaviour, IHittable
         }
 
         if (playerHittable != null)
+        {
+            // Log mínimo para comprobar que el ataque ocurre y cuánto daño se aplica
+            Debug.Log($"{name} ataca a {player.name} con {attackDamage} daño.");
             playerHittable.TakeDamage(attackDamage);
+        }
+        else
+        {
+            Debug.LogWarning($"{name} intentó atacar pero playerHittable es null.");
+        }
     }
 
     public void TakeDamage(float damage)
@@ -157,10 +178,17 @@ public class Zombie : MonoBehaviour, IHittable
         }
         else transform.Rotate(Vector3.right, 90f);
 
-        // Notificar al GameManager que un enemigo muri�
+        // Notificar al GameManager que un enemigo murió
         GameManager.Instance?.EnemyDied();
 
-        Destroy(gameObject, destroyAfterSeconds);
+        // Destruir usando tiempo no escalado para que la eliminación ocurra aunque Time.timeScale == 0
+        StartCoroutine(DestroyAfterSecondsRealtime());
+    }
+
+    private System.Collections.IEnumerator DestroyAfterSecondsRealtime()
+    {
+        yield return new WaitForSecondsRealtime(destroyAfterSeconds);
+        Destroy(gameObject);
     }
 
     public float GetCurrentHealth()

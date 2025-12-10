@@ -6,6 +6,10 @@ using UnityEngine;
 
 public class Weapon : MonoBehaviour
 {
+    // NUEVA VARIABLE: Controla si el arma está equipada
+    [Header("Weapon State")]
+    public bool isEquipped = false;
+
     public bool isShooting, readyToShoot;
     public float shootingDelay = 0.5f;
 
@@ -26,7 +30,7 @@ public class Weapon : MonoBehaviour
     public float bulletDamage = 20f;
 
     public GameObject muzzleEffect;
-    private Animator animator;
+    internal Animator animator;
 
     // Nombre del state Idle configurable por arma (puedes poner Idle_M4_8 en el inspector para la M4_8)
     public string idleStateName = "Idle_M1911";
@@ -38,6 +42,9 @@ public class Weapon : MonoBehaviour
     public float reloadTime;
     public int magazineSize, bulletsLeft;
     public bool isReloading;
+
+    public Vector3 spawnPosition;
+    public Vector3 spawnRotation;
 
     public enum WeaponModel
     {
@@ -67,13 +74,17 @@ public class Weapon : MonoBehaviour
 
         bulletsLeft = magazineSize;
     }
+
     void Update()
     {
-        if (bulletsLeft == 0 && isShooting) 
+        // CRÍTICO: Solo procesar inputs si el arma está equipada
+        if (!isEquipped)
+            return;
+
+        if (bulletsLeft == 0 && isShooting)
         {
             SoundManager.Instance.emptyMagazineSoundM1911.Play();
         }
-
 
         if (currentShootingMode == ShootingMode.Auto)
         {
@@ -91,13 +102,36 @@ public class Weapon : MonoBehaviour
                 isShooting = false;
             }
         }
-        if (Input.GetKeyDown(KeyCode.R) && bulletsLeft < magazineSize && isReloading == false)
+
+        // Mejora: mensajes diagnósticos y comprobaciones más explícitas para la recarga
+        if (Input.GetKeyDown(KeyCode.R))
         {
-            Reload();
+            if (isReloading)
+            {
+                Debug.Log("Weapon: ya en recarga (isReloading=true)");
+            }
+            else if (bulletsLeft >= magazineSize)
+            {
+                Debug.Log("Weapon: cargador ya está lleno");
+            }
+            else if (WeaponManager.Instance == null)
+            {
+                Debug.LogWarning("Weapon: WeaponManager.Instance es null, no se puede recargar");
+            }
+            else if (WeaponManager.Instance.CheckAmmmoLeftFor(thisWeaponModel) <= 0)
+            {
+                Debug.Log("Weapon: no queda munición de reserva para recargar");
+            }
+            else
+            {
+                Reload();
+            }
         }
+
+
         if (bulletsLeft <= 0 && isReloading == false)
         {
-           // Reload();
+            // Reload();
             //return;
         }
 
@@ -106,18 +140,26 @@ public class Weapon : MonoBehaviour
             burstBulletsLeft = bulletsPerBurst;
             FireWeapon();
         }
-        if (AmmoManager.Instance.ammoDisplay != null && bulletsPerBurst > 0)
+
+    }
+
+
+    
+    // Método público para equipar/desequipar el arma
+    public void SetEquipped(bool equipped)
+    {
+        isEquipped = equipped;
+
+        // Opcional: desactivar el animator cuando no está equipada
+        if (animator != null)
         {
-            AmmoManager.Instance.ammoDisplay.text = $"{bulletsLeft/bulletsPerBurst}/{magazineSize/bulletsPerBurst}";
+            animator.enabled = equipped;
         }
     }
 
     void FireWeapon()
     {
-
         bulletsLeft--;
-
-        //SoundManager.Instance.shootingSoundM1911.Play();
 
         SoundManager.Instance.PlayShootingSound(thisWeaponModel);
 
@@ -172,9 +214,32 @@ public class Weapon : MonoBehaviour
 
     private void ReloadCompleted()
     {
-        bulletsLeft = magazineSize;
+        // Seguridad: comprobar instancia manager
+        if (WeaponManager.Instance == null)
+        {
+            Debug.LogWarning("ReloadCompleted: WeaponManager.Instance es null");
+            isReloading = false;
+            return;
+        }
+
+        // Calcular cuántas balas faltan para llenar el cargador
+        int needed = magazineSize - bulletsLeft;
+        int available = WeaponManager.Instance.CheckAmmmoLeftFor(thisWeaponModel);
+
+        int toLoad = Math.Min(needed, available);
+        bulletsLeft += toLoad;
+
+        // Restar solo las balas realmente cargadas
+        if (toLoad > 0)
+        {
+            WeaponManager.Instance.DecreaseTotalAmmo(toLoad, thisWeaponModel);
+        }
+
+        // Resetear estado de recarga y actualizar HUD
         isReloading = false;
+        HUDManager.Instance?.RefreshHUD();
     }
+
     private void PlayRecoilAnimation()
     {
         if (animator == null) return;
@@ -289,6 +354,7 @@ public class Weapon : MonoBehaviour
     {
         readyToShoot = true;
     }
+
     public Vector3 CalculateDirectionAndSpread()
     {
         Ray ray = Camera.main.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
@@ -309,6 +375,7 @@ public class Weapon : MonoBehaviour
 
         return direction + new Vector3(x, y, 0);
     }
+
     private IEnumerator DestroyBulletAfterTime(GameObject bullet, float delay)
     {
         yield return new WaitForSeconds(delay);

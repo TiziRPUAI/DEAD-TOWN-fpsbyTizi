@@ -1,3 +1,5 @@
+
+using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -13,6 +15,8 @@ public class GameManager : MonoBehaviour
     public bool persistBetweenScenes = true;
 
     private int enemiesRemaining;
+
+    private Coroutine victoryCheckCoroutine;
 
     private void Awake()
     {
@@ -31,11 +35,25 @@ public class GameManager : MonoBehaviour
         uiManager?.HideAll();
     }
 
+    // Recalcula el conteo actual (útil al iniciar escena)
     public void CountEnemies()
     {
         var zombies = FindObjectsOfType<Zombie>();
         enemiesRemaining = zombies != null ? zombies.Length : 0;
         Debug.Log($"GameManager: enemiesRemaining = {enemiesRemaining}");
+    }
+
+    // Llamar desde el zombie al instanciarse para incrementar el contador
+    public void RegisterEnemy()
+    {
+        enemiesRemaining++;
+        Debug.Log($"GameManager: RegisterEnemy called. Remaining = {enemiesRemaining}");
+        // Si había una comprobación de victoria en curso, cancelarla porque llegó un nuevo enemigo
+        if (victoryCheckCoroutine != null)
+        {
+            StopCoroutine(victoryCheckCoroutine);
+            victoryCheckCoroutine = null;
+        }
     }
 
     public void EnemyDied()
@@ -44,34 +62,37 @@ public class GameManager : MonoBehaviour
         Debug.Log($"GameManager: Enemy died. Remaining = {enemiesRemaining}");
         if (enemiesRemaining <= 0)
         {
-            OnVictory();
+            // Esperar un pequeño intervalo antes de declarar victoria para evitar carreras con spawners
+            if (victoryCheckCoroutine == null)
+                victoryCheckCoroutine = StartCoroutine(DelayedVictoryCheck());
         }
+    }
+
+    private IEnumerator DelayedVictoryCheck()
+    {
+        // Espera en tiempo real (no afectada por timeScale), suficiente para que spawners registren nuevos enemigos
+        yield return new WaitForSecondsRealtime(0.2f);
+        victoryCheckCoroutine = null;
+       
     }
 
     public void PlayerDied()
     {
-        Debug.Log("GameManager: Player died.");
-        Time.timeScale = 0f;
-        uiManager?.ShowDeathPanel();
+        
     }
 
     private void OnVictory()
     {
-        Debug.Log("GameManager: Victory!");
-        Time.timeScale = 0f;
-        uiManager?.ShowVictoryPanel();
+      
     }
 
     public void RestartLevel()
     {
-        Time.timeScale = 1f;
-        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+ 
     }
 
     public void QuitToMenu()
     {
-        Time.timeScale = 1f;
-        // Asume escena 0 como menú; cámbialo si tu proyecto tiene otro índice
-        SceneManager.LoadScene(0);
+     
     }
 }
