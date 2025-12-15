@@ -44,6 +44,18 @@ public class ZombieSpawnController : MonoBehaviour
     public bool useAmmoSpawnPoint = true;         // si true intentará spawnear en ammoSpawnPoint
     public bool ammoSpawnAtExactPoint = true;     // si true usa la posición exacta, si false aplica offset aleatorio
 
+    // Dificultad / control de crecimiento
+    [Header("Difficulty / Caps")]
+    public float spawnGrowthFactor = 1.5f;        // multiplicador por ola (ej. 1.5 = +50%)
+    public bool capZombiesPerWave = true;
+    public int maxZombiesPerWave = 100;           // tope por ola
+
+    // Evento especial cada N olas
+    [Header("Special waves")]
+    public int wavesBeforeBoss = 5;               // cada 5 olas spawn de boss
+    public GameObject bossPrefab;                 // prefab del boss (opcional)
+    public int bossCount = 1;                     // cuántos bosses spawnear
+
     // Función: Inicializa listas, valores y lanza la primera oleada.
     private void Start()
     {
@@ -77,6 +89,10 @@ public class ZombieSpawnController : MonoBehaviour
     {
         int spawnerCount = (spawnerPoints != null && spawnerPoints.Count > 0) ? spawnerPoints.Count : 1;
 
+        // Aplicar cap por ola si corresponde
+        if (capZombiesPerWave)
+            currentZombiesPerWave = Mathf.Min(currentZombiesPerWave, maxZombiesPerWave);
+
         for (int i = 0; i < currentZombiesPerWave; i++)
         {
             // Elegir spawner según la configuración
@@ -102,7 +118,6 @@ public class ZombieSpawnController : MonoBehaviour
 
             if (prefabToSpawn == null)
             {
-               
                 yield return new WaitForSeconds(spawnDelay);
                 continue;
             }
@@ -245,8 +260,47 @@ public class ZombieSpawnController : MonoBehaviour
         if (waveOverUI != null) waveOverUI.gameObject.SetActive(false);
         if (cooldownCounterUI != null) cooldownCounterUI.gameObject.SetActive(false);
 
-        currentZombiesPerWave *= 2;
+        // Si toca ola especial (cada wavesBeforeBoss), spawnear boss(s) antes de la siguiente oleada
+        if (wavesBeforeBoss > 0 && currentWave % wavesBeforeBoss == 0 && bossPrefab != null)
+        {
+            SpawnBosses();
+        }
+
+        // Escalar cantidad para la siguiente ola usando factor en vez de duplicar
+        int nextCount = Mathf.RoundToInt(currentZombiesPerWave * spawnGrowthFactor);
+        if (capZombiesPerWave)
+            nextCount = Mathf.Min(nextCount, maxZombiesPerWave);
+        currentZombiesPerWave = Mathf.Max(1, nextCount);
 
         StartNextWave();
+    }
+
+    // Helper para spawnear bosses en los spawners disponibles
+    private void SpawnBosses()
+    {
+        if (spawnerPoints == null || spawnerPoints.Count == 0)
+        {
+            InstantiateBossAt(transform);
+            return;
+        }
+
+        for (int i = 0; i < bossCount; i++)
+        {
+            Transform chosen = spawnerPoints[UnityEngine.Random.Range(0, spawnerPoints.Count)];
+            InstantiateBossAt(chosen);
+        }
+    }
+
+    private void InstantiateBossAt(Transform spawnPoint)
+    {
+        if (bossPrefab == null) return;
+
+        Vector3 spawnOffset = new Vector3(UnityEngine.Random.Range(spawnOffsetXRange.x, spawnOffsetXRange.y), 0f, UnityEngine.Random.Range(spawnOffsetZRange.x, spawnOffsetZRange.y));
+        Vector3 spawnPosition = (spawnPoint != null ? spawnPoint.position : transform.position) + spawnOffset;
+
+        var boss = Instantiate(bossPrefab, spawnPosition, Quaternion.identity);
+        var nav = boss.GetComponent<EnemyNavigation>();
+        if (nav != null)
+            currentZombiesAlive.Add(nav);
     }
 }

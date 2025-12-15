@@ -525,6 +525,10 @@ PrefabInstance:
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: 2100000, guid: c3789252adda8f5418fcb6c37547edd5, type: 2}
+    - target: {fileID: 1550217422760275731, guid: 615a6026c5591764db7df2af9c59614e, type: 3}
+      propertyPath: mouseSensitivity
+      value: 50
+      objectReference: {fileID: 0}
     - target: {fileID: 1980773168775929437, guid: 615a6026c5591764db7df2af9c59614e, type: 3}
       propertyPath: m_LocalPosition.x
       value: 18.41
@@ -1484,6 +1488,14 @@ PrefabInstance:
     - target: {fileID: 6244881948442158289, guid: 0e1204e62c136e542a7c730597b306d4, type: 3}
       propertyPath: m_Name
       value: M1911
+      objectReference: {fileID: 0}
+    - target: {fileID: 7906454793039761957, guid: 0e1204e62c136e542a7c730597b306d4, type: 3}
+      propertyPath: bulletDamage
+      value: 30
+      objectReference: {fileID: 0}
+    - target: {fileID: 7906454793039761957, guid: 0e1204e62c136e542a7c730597b306d4, type: 3}
+      propertyPath: shootingDelay
+      value: 0.26
       objectReference: {fileID: 0}
     - target: {fileID: 7906454793039761957, guid: 0e1204e62c136e542a7c730597b306d4, type: 3}
       propertyPath: thisWeaponModel
@@ -2447,7 +2459,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6afe61f7c238c344194d13bf2ae537f4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
-  initialZombiesPerWave: 8
+  initialZombiesPerWave: 6
   currentZombiesPerWave: 0
   spawnDelay: 0.5
   currentWave: 0
@@ -2477,6 +2489,12 @@ MonoBehaviour:
   ammoSpawnPoint: {fileID: 965344890}
   useAmmoSpawnPoint: 1
   ammoSpawnAtExactPoint: 1
+  spawnGrowthFactor: 1.5
+  capZombiesPerWave: 1
+  maxZombiesPerWave: 100
+  wavesBeforeBoss: 5
+  bossPrefab: {fileID: 3494688901176792053, guid: c39a2bd2f933af147a70992ae90f2a54, type: 3}
+  bossCount: 1
 --- !u!4 &1187587607
 Transform:
   m_ObjectHideFlags: 0
@@ -3970,6 +3988,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1077564961168335595, guid: 1efb52263ef991149a551d5fcc4e6b9e, type: 3}
+      propertyPath: bulletDamage
+      value: 35
+      objectReference: {fileID: 0}
     - target: {fileID: 1077564961168335595, guid: 1efb52263ef991149a551d5fcc4e6b9e, type: 3}
       propertyPath: thisWeaponModel
       value: 1
