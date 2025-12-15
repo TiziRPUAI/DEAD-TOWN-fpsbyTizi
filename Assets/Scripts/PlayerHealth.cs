@@ -10,14 +10,16 @@ public class PlayerHealth : MonoBehaviour, IHittable
 
     [Header("Damage control")]
     [Tooltip("Tiempo mínimo entre daños consecutivos (para evitar multihit)")]
-    public float damageCooldown = 0.05f;
+    public float damageCooldown = 0.1f;
     private float lastDamageTime = -999f;
 
     [Header("Optional events")]
-    public UnityEvent<float> onDamage; // parámetro: currentHealth
+    public UnityEvent<float> onDamage; 
     public UnityEvent onDeath;
     public GameObject bloodyScreen;
     private BloodyScreenEffect bloodyEffect;
+    public GameObject deathScreen; 
+    private DeathScreen deathScreenCtrl;
     public TextMeshProUGUI playerHealthUI;
     public bool isDead { get; private set; }
 
@@ -33,6 +35,14 @@ public class PlayerHealth : MonoBehaviour, IHittable
             bloodyEffect = bloodyScreen.GetComponent<BloodyScreenEffect>();
             if (bloodyEffect == null)
                 Debug.LogWarning($"{name}: BloodyScreenEffect no encontrado en bloodyScreen.");
+        }
+
+        if (deathScreen != null)
+        {
+            deathScreen.SetActive(true);
+            deathScreenCtrl = deathScreen.GetComponent<DeathScreen>();
+            if (deathScreenCtrl == null)
+                Debug.LogWarning($"{name}: DeathScreen no encontrado en deathScreen.");
         }
 
         UpdateHealthUI();
@@ -102,6 +112,10 @@ public class PlayerHealth : MonoBehaviour, IHittable
         // Activar el Animator que esté en los hijos para reproducir la animación de muerte
         var animator = GetComponentInChildren<Animator>();
         if (animator != null) animator.enabled = true;
+
+        // Mostrar blackout + "YOU DIED"
+        if (deathScreenCtrl != null)
+            deathScreenCtrl.Show();
 
         // Asegurar que la UI muestre 0 al morir
         UpdateHealthUI();

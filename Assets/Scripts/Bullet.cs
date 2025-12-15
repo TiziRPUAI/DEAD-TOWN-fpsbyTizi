@@ -31,15 +31,14 @@ public class Bullet : MonoBehaviour
         GameObject beerTagged = FindInParentsWithTag(colliderObj, "Beer");
         GameObject enemyTagged = FindInParentsWithTag(colliderObj, "Enemy");
 
-        Debug.Log($"Bullet hit: collider='{colliderObj.name}', tag='{colliderObj.tag}', beerTagged={(beerTagged!=null)}, enemyTagged={(enemyTagged!=null)}");
-
-        // Si impacta con una botella (u objeto con Beer tag), hacer shatter
+        
+        
         if (beerTagged != null)
         {
             BeerBottle beerBottle = beerTagged.GetComponentInParent<BeerBottle>();
             if (beerBottle != null)
             {
-                Debug.Log("Beer bottle hit -> Shatter()");
+                
                 beerBottle.Shatter();
             }
         }

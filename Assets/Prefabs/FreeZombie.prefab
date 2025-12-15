@@ -553,13 +553,15 @@ MonoBehaviour:
   maxHealth: 100
   isDead: 0
   destroyAfterSeconds: 2
-  attackDamage: 10
+  attackDamage: 15
   attackRange: 5
-  attackCooldown: 0.5
+  attackCooldown: 1
+  movementSpeed: 4
   attackTriggerName: Attack
   dieTriggerName: Die
   attackStateName: Attack
   forceAlwaysAnimate: 1
+  chaseSoundInterval: 1
 --- !u!114 &3618577061910805003
 MonoBehaviour:
   m_ObjectHideFlags: 0

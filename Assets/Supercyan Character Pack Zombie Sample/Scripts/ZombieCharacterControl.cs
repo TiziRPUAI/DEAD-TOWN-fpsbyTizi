@@ -2,15 +2,10 @@
 
 public class ZombieCharacterControl : MonoBehaviour
 {
+    // Función: Controla el movimiento del personaje zombie en modos Tank y Direct.
     private enum ControlMode
     {
-        /// <summary>
-        /// Up moves the character forward, left and right turn the character gradually and down moves the character backwards
-        /// </summary>
         Tank,
-        /// <summary>
-        /// Character freely moves in the chosen direction from the perspective of the camera
-        /// </summary>
         Direct
     }
 
@@ -29,12 +24,14 @@ public class ZombieCharacterControl : MonoBehaviour
 
     private Vector3 m_currentDirection = Vector3.zero;
 
+    // Función: Inicializa referencias opcionales.
     private void Awake()
     {
         if (!m_animator) { gameObject.GetComponent<Animator>(); }
         if (!m_rigidBody) { gameObject.GetComponent<Animator>(); }
     }
 
+    // Función: Actualiza física según el modo de control.
     private void FixedUpdate()
     {
         switch (m_controlMode)
@@ -53,6 +50,7 @@ public class ZombieCharacterControl : MonoBehaviour
         }
     }
 
+    // Función: Modo Tank: movimiento hacia adelante/atrás y giro gradual.
     private void TankUpdate()
     {
         float v = Input.GetAxis("Vertical");
@@ -67,6 +65,7 @@ public class ZombieCharacterControl : MonoBehaviour
         m_animator.SetFloat("MoveSpeed", m_currentV);
     }
 
+    // Función: Modo Direct: movimiento relativo a la cámara con orientación suave.
     private void DirectUpdate()
     {
         float v = Input.GetAxis("Vertical");

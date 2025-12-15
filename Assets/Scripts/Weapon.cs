@@ -6,39 +6,32 @@ using UnityEngine;
 
 public class Weapon : MonoBehaviour
 {
-    // NUEVA VARIABLE: Controla si el arma está equipada
+    // Función: Gestiona estado del arma, disparo, recarga, animaciones de recoil y creación de balas.
     [Header("Weapon State")]
     public bool isEquipped = false;
 
-    public bool isShooting, readyToShoot;
+    public bool isShooting, readyToShoot;   
     public float shootingDelay = 0.5f;
 
     public int bulletsPerBurst = 0;
     public int burstBulletsLeft;
 
-    // Spread
     public float spreadInstensity;
 
-    // Bullet
     public GameObject bulletPrefab;
     public Transform bulletSpawn;
     public float bulletVelocity = 500;
     public float bulletPrefabLifetime = 3f;
 
-    // Nuevo: daño por bala configurable por arma
     [Header("Damage")]
     public float bulletDamage = 20f;
 
     public GameObject muzzleEffect;
     internal Animator animator;
 
-    // Nombre del state Idle configurable por arma (puedes poner Idle_M4_8 en el inspector para la M4_8)
     public string idleStateName = "Idle_M1911";
-
-    // Nombre del state Recoil configurable por arma (antes const para M1911)
     public string recoilStateName = "Recoil_M1911";
 
-    //Loading
     public float reloadTime;
     public int magazineSize, bulletsLeft;
     public bool isReloading;
@@ -63,9 +56,9 @@ public class Weapon : MonoBehaviour
 
     public ShootingMode currentShootingMode;
 
-    // Coroutine que gestiona el retorno a Idle tras el recoil
     private Coroutine recoilCoroutine;
 
+    // Función: Inicializa estados básicos del arma.
     private void Awake()
     {
         readyToShoot = true;
@@ -75,9 +68,9 @@ public class Weapon : MonoBehaviour
         bulletsLeft = magazineSize;
     }
 
+    // Función: Procesa entrada de disparo/recarga y lanza disparos cuando procede.
     void Update()
     {
-        // CRÍTICO: Solo procesar inputs si el arma está equipada
         if (!isEquipped)
             return;
 
@@ -91,48 +84,18 @@ public class Weapon : MonoBehaviour
             isShooting = Input.GetKey(KeyCode.Mouse0);
         }
         else if (currentShootingMode == ShootingMode.Single ||
-            currentShootingMode == ShootingMode.Burst)
+                 currentShootingMode == ShootingMode.Burst)
         {
             if (Input.GetKeyDown(KeyCode.Mouse0))
-            {
                 isShooting = true;
-            }
             else
-            {
                 isShooting = false;
-            }
         }
 
-        // Mejora: mensajes diagnósticos y comprobaciones más explícitas para la recarga
         if (Input.GetKeyDown(KeyCode.R))
         {
-            if (isReloading)
-            {
-                Debug.Log("Weapon: ya en recarga (isReloading=true)");
-            }
-            else if (bulletsLeft >= magazineSize)
-            {
-                Debug.Log("Weapon: cargador ya está lleno");
-            }
-            else if (WeaponManager.Instance == null)
-            {
-                Debug.LogWarning("Weapon: WeaponManager.Instance es null, no se puede recargar");
-            }
-            else if (WeaponManager.Instance.CheckAmmmoLeftFor(thisWeaponModel) <= 0)
-            {
-                Debug.Log("Weapon: no queda munición de reserva para recargar");
-            }
-            else
-            {
-                Reload();
-            }
-        }
-
-
-        if (bulletsLeft <= 0 && isReloading == false)
-        {
-            // Reload();
-            //return;
+            Reload();
+           
         }
 
         if (readyToShoot && isShooting && bulletsLeft > 0)
@@ -140,23 +103,20 @@ public class Weapon : MonoBehaviour
             burstBulletsLeft = bulletsPerBurst;
             FireWeapon();
         }
-
     }
 
-
-    
-    // Método público para equipar/desequipar el arma
+    // Función: Marca el arma como equipada/no equipada y habilita/deshabilita animator.
     public void SetEquipped(bool equipped)
     {
         isEquipped = equipped;
 
-        // Opcional: desactivar el animator cuando no está equipada
         if (animator != null)
         {
             animator.enabled = equipped;
         }
     }
 
+    // Función: Ejecuta un disparo: instanciar bala, aplicar fuerza, efecto y pasar daño.
     void FireWeapon()
     {
         bulletsLeft--;
@@ -182,12 +142,10 @@ public class Weapon : MonoBehaviour
             rb.AddForce(shootingDirection * bulletVelocity, ForceMode.Impulse);
         }
 
-        // Pasar el daño configurado al script Bullet (si existe) y establecer owner para evitar self-hit
         var bulletScript = bullet.GetComponent<Bullet>();
         if (bulletScript != null)
         {
             bulletScript.damage = bulletDamage;
-            // Establece owner como el jugador si existe, sino el propio objeto que dispara
             var playerGO = GetComponentInParent<PlayerHealth>()?.gameObject;
             bulletScript.owner = playerGO != null ? playerGO : gameObject;
         }
@@ -203,6 +161,7 @@ public class Weapon : MonoBehaviour
         }
     }
 
+    // Función: Inicia la recarga (animación + temporizador).
     private void Reload()
     {
         SoundManager.Instance.PlayReloadingSound(thisWeaponModel);
@@ -212,34 +171,31 @@ public class Weapon : MonoBehaviour
         Invoke("ReloadCompleted", reloadTime);
     }
 
+    // Función: Completa la recarga, mueve munición del inventario al cargador y actualiza HUD.
     private void ReloadCompleted()
     {
-        // Seguridad: comprobar instancia manager
         if (WeaponManager.Instance == null)
         {
-            Debug.LogWarning("ReloadCompleted: WeaponManager.Instance es null");
             isReloading = false;
             return;
         }
 
-        // Calcular cuántas balas faltan para llenar el cargador
         int needed = magazineSize - bulletsLeft;
         int available = WeaponManager.Instance.CheckAmmmoLeftFor(thisWeaponModel);
 
         int toLoad = Math.Min(needed, available);
         bulletsLeft += toLoad;
 
-        // Restar solo las balas realmente cargadas
         if (toLoad > 0)
         {
             WeaponManager.Instance.DecreaseTotalAmmo(toLoad, thisWeaponModel);
         }
 
-        // Resetear estado de recarga y actualizar HUD
         isReloading = false;
         HUDManager.Instance?.RefreshHUD();
     }
 
+    // Función: Reproduce la animación de recoil y programa retorno a idle.
     private void PlayRecoilAnimation()
     {
         if (animator == null) return;
@@ -249,22 +205,17 @@ public class Weapon : MonoBehaviour
         {
             int recoilHash = Animator.StringToHash(recoilStateName);
             animator.ResetTrigger("Recoil");
-
-            // Reproducir directamente el state de recoil en la capa encontrada
             animator.Play(recoilHash, recoilLayer, 0f);
 
-            // Cancelar cualquier coroutine pendiente para evitar solapamientos
             if (recoilCoroutine != null)
             {
                 StopCoroutine(recoilCoroutine);
                 recoilCoroutine = null;
             }
 
-            // Intentar obtener la duración real del clip
             float recoilDuration = GetClipLength(recoilStateName);
             if (recoilDuration <= 0f)
             {
-                // Si no se encontró por nombre, intentar leer el clip actual en la capa
                 var clips = animator.GetCurrentAnimatorClipInfo(recoilLayer);
                 if (clips != null && clips.Length > 0 && clips[0].clip != null)
                 {
@@ -282,10 +233,8 @@ public class Weapon : MonoBehaviour
             return;
         }
 
-        // Fallback: usar trigger si no existe el state directo
         animator.SetTrigger("Recoil");
 
-        // Asegurar retorno a idle en fallback: cancelar cualquiera y lanzar una garantía de retorno corto
         if (recoilCoroutine != null)
         {
             StopCoroutine(recoilCoroutine);
@@ -294,6 +243,7 @@ public class Weapon : MonoBehaviour
         recoilCoroutine = StartCoroutine(EnsureReturnToIdleFallback(0.25f));
     }
 
+    // Función: Espera y crossfade a un estado concreto.
     private IEnumerator PlayStateAfterCrossfade(int layer, int stateHash, float delay, float crossfadeTime)
     {
         yield return new WaitForSeconds(delay);
@@ -305,7 +255,7 @@ public class Weapon : MonoBehaviour
         }
     }
 
-    // Garantía de retorno cuando usamos trigger (fallback) y no podemos calcular duración
+    // Función: Fallback que fuerza retorno a idle si usamos trigger.
     private IEnumerator EnsureReturnToIdleFallback(float delay)
     {
         yield return new WaitForSeconds(delay);
@@ -319,12 +269,11 @@ public class Weapon : MonoBehaviour
         }
         else
         {
-            // Si no existe idle por nombre, intentar resetear triggers para forzar transición
             animator.ResetTrigger("Recoil");
         }
     }
 
-    // Busca la capa donde existe un state con ese nombre y devuelve el índice de la capa o -1.
+    // Función: Busca la capa del Animator donde existe un state por nombre.
     private int FindStateLayer(string stateName)
     {
         if (animator == null) return -1;
@@ -336,6 +285,7 @@ public class Weapon : MonoBehaviour
         return -1;
     }
 
+    // Función: Obtiene la duración de un clip por nombre desde el RuntimeAnimatorController.
     private float GetClipLength(string clipName)
     {
         if (animator == null || animator.runtimeAnimatorController == null) return 0f;
@@ -350,11 +300,13 @@ public class Weapon : MonoBehaviour
         return 0f;
     }
 
+    // Función: Resetea el estado para permitir nuevo disparo.
     private void ResetShot()
     {
         readyToShoot = true;
     }
 
+    // Función: Calcula la dirección de disparo aplicando spread.
     public Vector3 CalculateDirectionAndSpread()
     {
         Ray ray = Camera.main.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
@@ -376,6 +328,7 @@ public class Weapon : MonoBehaviour
         return direction + new Vector3(x, y, 0);
     }
 
+    // Función: Destruye la bala tras un tiempo.
     private IEnumerator DestroyBulletAfterTime(GameObject bullet, float delay)
     {
         yield return new WaitForSeconds(delay);

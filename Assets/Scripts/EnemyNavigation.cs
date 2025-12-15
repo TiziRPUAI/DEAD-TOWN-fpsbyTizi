@@ -5,11 +5,13 @@ using UnityEngine.AI;
 
 public class EnemyNavigation : MonoBehaviour
 {
+    // Función: Gestiona la navegación del enemigo hacia el jugador usando NavMeshAgent.
     public NavMeshAgent agent;
     public Transform player;
     public float initialDelay;
     public float interval;
 
+    // Función: Inicializa el agente y programa la actualización periódica del destino.
     void Start()
     {
         agent = GetComponent<NavMeshAgent>();
@@ -20,6 +22,7 @@ public class EnemyNavigation : MonoBehaviour
         }
     }
 
+    // Función: Ejecuta la lógica de muerte del enemigo (detener agente, desactivar collider y destruir).
     public void Die()
     {
         if (agent != null)
@@ -34,6 +37,7 @@ public class EnemyNavigation : MonoBehaviour
         Destroy(gameObject, 2f);
     }
 
+    // Función: Actualiza el destino del NavMeshAgent al jugador si es posible.
     public void SetDestination()
     {
         if (agent != null && player != null && agent.enabled)

@@ -7,6 +7,7 @@ using System;
 
 public class HUDManager : MonoBehaviour
 {
+    // Función: Gestiona elementos HUD (munición, arma, lanzables y contador de oleada).
     public static HUDManager Instance { get; set; }
 
     [Header("Ammo")]
@@ -27,10 +28,15 @@ public class HUDManager : MonoBehaviour
 
     public Sprite emptySlot;
 
-    // Caché de sprites para no cargar repetidamente
+    [Header("Wave")]
+    public TextMeshProUGUI waveUI;
+
     private readonly Dictionary<Weapon.WeaponModel, Sprite> weaponSprites = new Dictionary<Weapon.WeaponModel, Sprite>();
     private readonly Dictionary<Weapon.WeaponModel, Sprite> ammoSprites = new Dictionary<Weapon.WeaponModel, Sprite>();
 
+    private ZombieSpawnController spawner;
+
+    // Función: Inicializa la instancia singleton y cachea referencias.
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -41,26 +47,29 @@ public class HUDManager : MonoBehaviour
         {
             Instance = this;
         }
+
+        spawner = FindObjectOfType<ZombieSpawnController>();
     }
 
+    // Función: Actualiza el HUD cada frame.
     private void Update()
     {
-        // mantener Update para refresco continuo (por seguridad), pero delega en método reutilizable
         UpdateHUD();
     }
 
-    // Método público para forzar actualización desde WeaponManager
+    // Función: Forzar refresco del HUD desde controladores externos.
     public void RefreshHUD()
     {
         UpdateHUD();
     }
 
+    // Función: Actualiza todos los elementos visibles del HUD.
     private void UpdateHUD()
     {
-        // Seguridad: comprobar instancia de WeaponManager
         if (WeaponManager.Instance == null || WeaponManager.Instance.activeWeaponSlot == null)
         {
             ClearHUD();
+            UpdateWaveUI();
             return;
         }
 
@@ -70,14 +79,11 @@ public class HUDManager : MonoBehaviour
 
         if (activeWeapon != null)
         {
-            // Evitar división por cero: use siempre al menos 1
             int burst = Math.Max(1, activeWeapon.bulletsPerBurst);
             magazineAmmoUI.text = $"{activeWeapon.bulletsLeft / burst}";
             totalAmmoUI.text = $"{WeaponManager.Instance.CheckAmmmoLeftFor(activeWeapon.thisWeaponModel)}";
 
             Weapon.WeaponModel model = activeWeapon.thisWeaponModel;
-            // Logs diagnósticos mínimos (comentarlos si molestan)
-            //Debug.Log($"HUDManager: activeWeapon detected: {model}");
 
             ammoTypeUI.sprite = GetAmmoSprite(model);
             activeWeaponUI.sprite = GetWeaponSprite(model);
@@ -91,8 +97,11 @@ public class HUDManager : MonoBehaviour
         {
             ClearHUD();
         }
+
+        UpdateWaveUI();
     }
 
+    // Función: Limpia los elementos de munición y arma del HUD.
     private void ClearHUD()
     {
         magazineAmmoUI.text = "";
@@ -102,7 +111,19 @@ public class HUDManager : MonoBehaviour
         unActiveWeaponUI.sprite = emptySlot;
     }
 
-    // Obtiene sprite de arma usando la lógica original del tutorial pero SIN Instantiate.
+    // Función: Actualiza el contador de oleada usando ZombieSpawnController.
+    private void UpdateWaveUI()
+    {
+        if (waveUI == null) return;
+
+        if (spawner == null)
+            spawner = FindObjectOfType<ZombieSpawnController>();
+
+        int wave = (spawner != null) ? spawner.currentWave : 0;
+        waveUI.text = $"Wave: {wave}";
+    }
+
+    // Función: Obtiene o carga el sprite del arma.
     private Sprite GetWeaponSprite(Weapon.WeaponModel model)
     {
         if (weaponSprites.TryGetValue(model, out var cached)) return cached;
@@ -131,7 +152,7 @@ public class HUDManager : MonoBehaviour
         return emptySlot;
     }
 
-    // Obtiene sprite de munición usando la lógica original del tutorial pero SIN Instantiate.
+    // Función: Obtiene o carga el sprite de munición.
     private Sprite GetAmmoSprite(Weapon.WeaponModel model)
     {
         if (ammoSprites.TryGetValue(model, out var cached)) return cached;
@@ -160,14 +181,12 @@ public class HUDManager : MonoBehaviour
         return emptySlot;
     }
 
-    // Carga sprite intentando: Resources.Load<Sprite>, Resources.Load<GameObject> (prefab) y Resources.LoadAll<Sprite> (sprite sheet).
+    // Función: Intenta cargar un Sprite desde Resources por varias rutas.
     private Sprite LoadSpriteFromResources(string resourceName)
     {
-        // 1) Intentar cargar directamente como Sprite
         var s = Resources.Load<Sprite>(resourceName);
         if (s != null) return s;
 
-        // 2) Intentar cargar prefab y extraer SpriteRenderer/Image sin instanciar
         var prefab = Resources.Load<GameObject>(resourceName);
         if (prefab != null)
         {
@@ -175,7 +194,6 @@ public class HUDManager : MonoBehaviour
             if (sprite != null) return sprite;
         }
 
-        // 3) Intentar rutas comunes dentro de Resources (subcarpetas)
         string[] attempts = new[] { "Sprites/" + resourceName, "UI/" + resourceName, "Images/" + resourceName, "Sprites/UI/" + resourceName };
         foreach (var path in attempts)
         {
@@ -190,7 +208,6 @@ public class HUDManager : MonoBehaviour
             }
         }
 
-        // 4) Intentar sprite sheet / atlas en Resources
         try
         {
             var sheet = Resources.LoadAll<Sprite>(resourceName);
@@ -204,7 +221,7 @@ public class HUDManager : MonoBehaviour
         return null;
     }
 
-    // Extrae sprite desde un prefab (no instancia), busca Image o SpriteRenderer en root o hijos
+    // Función: Extrae un Sprite desde un prefab sin instanciarlo.
     private Sprite ExtractSpriteFromPrefab(GameObject prefab)
     {
         if (prefab == null) return null;
@@ -224,6 +241,7 @@ public class HUDManager : MonoBehaviour
         return null;
     }
 
+    // Función: Devuelve la otra ranura de arma (no activa).
     private GameObject GetUnActiveWeaponSlot()
     {
         if (WeaponManager.Instance == null) return null;

@@ -5,12 +5,16 @@ using UnityEngine.UI;
 public class BloodyScreenEffect : MonoBehaviour
 {
     [Header("Componentes")]
-    [SerializeField] private Image image;
+    [SerializeField] private Graphic image; // admite Image o RawImage
 
     [Header("Parámetros de efecto")]
     [Tooltip("Alfa máximo del efecto (0 = invisible, 1 = opaco)")]
     [Range(0f, 1f)]
     public float maxAlpha = 0.8f;
+
+    [Tooltip("Multiplicador para intensificar la visibilidad del efecto")]
+    [Min(1f)]
+    public float intensityMultiplier = 1.5f;
 
     [Tooltip("Duración del fade in en segundos")]
     public float fadeInDuration = 0.1f;
@@ -26,35 +30,35 @@ public class BloodyScreenEffect : MonoBehaviour
     private void Awake()
     {
         if (image == null)
-            image = GetComponent<Image>() ?? GetComponentInChildren<Image>();
+            image = GetComponent<Graphic>() ?? GetComponentInChildren<Graphic>(true);
 
         if (image == null)
         {
-            Debug.LogWarning($"{nameof(BloodyScreenEffect)}: no se encontró Image en el GameObject. Se intentará obtener al triggerear.");
-            // NO desactivamos el componente para permitir inicializarlo más tarde desde Trigger.
+            Debug.LogWarning($"{nameof(BloodyScreenEffect)}: no se encontró Graphic (Image/RawImage). Se intentará obtener al triggerear.");
         }
         else
         {
-            // Asegurar que empieza invisible
             SetAlpha(0f);
-            image.raycastTarget = false; // no bloquear input UI
+            image.raycastTarget = false;
         }
     }
 
-    // Llama a este método para iniciar el efecto. severity en [0,1] (por ejemplo damage/maxHealth)
+    // severity en [0,1] (damage / maxHealth)
     public void Trigger(float severity)
     {
-        // Asegurar referencia al Image si Awake no la inicializó (por GameObject inactivo en el inicio)
         if (image == null)
-            image = GetComponent<Image>() ?? GetComponentInChildren<Image>();
+            image = GetComponent<Graphic>() ?? GetComponentInChildren<Graphic>(true);
 
         if (image == null)
         {
-            Debug.LogWarning($"{nameof(BloodyScreenEffect)}.Trigger: no hay Image para mostrar el overlay.");
+            Debug.LogWarning($"{nameof(BloodyScreenEffect)}.Trigger: no hay Image/RawImage para mostrar el overlay.");
             return;
         }
 
-        float clamped = Mathf.Clamp01(severity);
+        // Amplificar la intensidad antes de clamp
+        float amplified = severity * intensityMultiplier;
+        float clamped = Mathf.Clamp01(amplified);
+
         if (runningCoroutine != null)
             StopCoroutine(runningCoroutine);
         runningCoroutine = StartCoroutine(Play(clamped));
